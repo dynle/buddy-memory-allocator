@@ -18,16 +18,17 @@ from operator import itemgetter
 
 memory = 64
 # li_memory=[(4,True),(4,False),(8,False),(16,True),(32,False)]
-# li_memory = (memory 시작 idx, memory크기, 사용여부)
-li_memory = [(0, memory, False)]
+# li_memory = [memory 시작 idx, memory크기, 사용여부]
+li_memory = [[0, memory, False]]
 
 def print_memory():
     print('|', end='')
+    # 전체를 #로 취급하면 안됨 ex) 메모리 공간이 32인데 31을 할당한 경우.
     for i in li_memory:
         if i[2] == True:
-            print('#'*i[0], end='')
+            print('#'*i[1], end='')
         else:
-            print('-'*i[0], end='')
+            print('-'*i[1], end='')
         print('|', end='')
     print()
 
@@ -44,19 +45,21 @@ while(1):
         if(blocks > memory):
             print("You can't allocate more than 64 blocks")
         else:
-            space_size = max(li_memory, key=itemgetter(1))[1]
+            upper_space_size = max(li_memory, key=itemgetter(1))[1]
             while(1):
-                if(blocks>space_size//2 and blocks <= space_size):
+                if(blocks>upper_space_size//2 and blocks <= upper_space_size):
                     # 안나눠도됨 / 할당
-                    idx = li_memory.index(space_size)
+                    idx = [y[1] for y in li_memory].index(upper_space_size)
+                    li_memory[idx][2] = True
                     # 블록의 idx 시작 - idx 끝 형태
-                    print(f'Blocks{0}-{3} allcoated:')
+                    print(f'Blocks {li_memory[idx][0]}-{li_memory[idx][0]+blocks} allcoated:')
                     break
                 else:
                     # 나눠야됨 / 나눠줌
-                    space_size = space_size//2
-                    print(f'(splitting) {0}/{space_size}')
-                    pass
+                    # memory size가 MAX인 값 하나를 두개롤 나누고, 나머지 MAX인 값은 붙여준다. if len(li_memory) 값이 2이상일때
+                    # li_memory=
+                    print(f'(splitting) {0}/{upper_space_size}')
+                    upper_space_size = upper_space_size//2
                 # if(blocks < max(li_memory, key=itemgetter(0))[0]):
                 #     pass
     elif(cmd == 'f'):
@@ -64,7 +67,6 @@ while(1):
         # merging 0/4 and 4/4 ...
         print(f'Blocks{0}-{3} freed:')
     elif(cmd == 'q'):
-        print('quit')
         break
     else:
         print('Invalid command')
