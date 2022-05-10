@@ -15,15 +15,16 @@ See p. 17-108 of syspro-kiso-e.pdf for further description, though you can write
 """
 
 from operator import itemgetter
-
+# set total memory space
 memory = 64
 # li_memory=[(4,True),(4,False),(8,False),(16,True),(32,False)]
 # li_memory = [memory 시작 idx, memory크기, 사용여부]
+
+# initialize memory
 li_memory = [[0, memory, False]]
 
 def print_memory():
     print('|', end='')
-    # 전체를 #로 취급하면 안됨 ex) 메모리 공간이 32인데 31을 할당한 경우.
     for i in li_memory:
         if i[2] == True:
             print('#'*i[1], end='')
@@ -33,7 +34,6 @@ def print_memory():
     print()
 
 while(1):
-    # print('|'+'-'*memory+'|')
     print_memory()
 
     print("How many blocks do you want to allocate/free?")
@@ -52,40 +52,86 @@ while(1):
             
             # Split the memory space
             while(min([mmy[1] for mmy in li_memory if mmy[1]>=blocks and mmy[2] == False]) > blocks):
-                # min(li_memory, key=itemgetter(1))[1]
+                # min(li_memory, key=itemgetter(1))[1] 이런거 사용해서 clean code
+                print(f'(splitting {li_memory[idx][0]}/{li_memory[idx][1]})')
                 
                 # Split the memory space by 2
                 if (li_memory[idx][1]//2 >= blocks and li_memory[idx][1]%2 == 0):
-                    li_memory=li_memory[:idx]+[[li_memory[idx][0], li_memory[idx][1]//2, False],[li_memory[idx][0]+li_memory[idx][1]//2, li_memory[idx][1]//2, False]]+li_memory[idx+1:]
+                    li_memory[idx:idx+1] = [[li_memory[idx][0], li_memory[idx][1]//2, False],[li_memory[idx][0]+li_memory[idx][1]//2, li_memory[idx][1]//2, False]]
+                    # li_memory=li_memory[:idx]+[[li_memory[idx][0], li_memory[idx][1]//2, False],[li_memory[idx][0]+li_memory[idx][1]//2, li_memory[idx][1]//2, False]]+li_memory[idx+1:]
                 
                 # Split the memory space by the number of blocks
                 else:
-                    li_memory=li_memory[:idx]+[[li_memory[idx][0],blocks,False]]+[[li_memory[idx][0]+blocks,li_memory[idx][1]-blocks,False]]+li_memory[idx+1:]
-                print(f'(splitting {li_memory[idx][0]}/{li_memory[idx][1]})')
-
+                    li_memory[idx:idx+1] = [[li_memory[idx][0],blocks,False],[li_memory[idx][0]+blocks,li_memory[idx][1]-blocks,False]]
+                    # li_memory=li_memory[:idx]+[[li_memory[idx][0],blocks,False],[li_memory[idx][0]+blocks,li_memory[idx][1]-blocks,False]]+li_memory[idx+1:]
             # Allocate the number of blocks to the memory space
             li_memory[idx][2] = True
             # (idx start - idx end) form
-            print(f'Blocks {li_memory[idx][0]}-{li_memory[idx][0]+li_memory[idx][1]-1} allcoated:')
-        for i in li_memory:
-            print(i)
+            allocation_start_idx = li_memory[idx][0]
+            allocation_end_idx = li_memory[idx][0]+li_memory[idx][1]-1
+            print(f'Blocks {allocation_start_idx}-{allocation_end_idx} allcoated:')
+    
     # Free
     elif(cmd[0] == 'f'):
-        # li_memory의 false, true를 기준으로 merge할지 안할지 결정 if statement, 옆 공간이 나와 같을 때까지 while statement
-        # merging 0/4 and 4/4 ...
         first_block_num = blocks
-        if(first_block_num > memory):
+        if(first_block_num > memory and first_block_num < 0):
             print("Memory space doesn't exist")
         elif (first_block_num not in [x[0] for x in li_memory if x[2] == True]):
-            print("You can't free a block that is not allocated")
+            print("Number is not first block number or is not a free block that is not allocated")
         else:
-            pass
+            # Free the number of blocks starting from the first_block_num
+            idx = [x[0] for x in li_memory].index(first_block_num)
+            li_memory[idx][2]=False
 
+            free_start_idx = li_memory[idx][0]
+            free_end_idx = li_memory[idx][0]+li_memory[idx][1]-1
 
-        print(f'Blocks{0}-{3} freed:')
+            # Merge memory space if two neighboring blocks are both empty
+            while(len(li_memory)!=1 and ((idx==len(li_memory)-1 and li_memory[idx-1][2]==False) or (idx==0 and li_memory[idx+1][2]==False) or (li_memory[idx-1][2]==False and li_memory[idx+1][2]==False))):
+                idx_start = idx
+                idx_size = li_memory[idx][1]
+                target_start = 0
+                target_size = 0
 
-    elif(cmd[0] == 's'):
-        print(li_memory)
+                # If left and right neighbor are both empty
+                if ((idx!=0 and idx!=len(li_memory)-1) and li_memory[idx-1][2]==False and li_memory[idx+1][2]==False):
+                    # print("in both")
+                    target = idx-1 if li_memory[idx-1][1]<=li_memory[idx+1][1] else idx+1
+                    target_start = li_memory[target][0]
+                    target_size = li_memory[target][1]
+                    if (target<idx):
+                        li_memory[target][1]+=li_memory[idx][1]
+                        li_memory.pop(idx)
+                        idx=target
+                    else:
+                        li_memory[idx][1]+=li_memory[target][1]
+                        li_memory.pop(target)
+
+                # If only left neighbor is empty
+                elif (idx!=0 and li_memory[idx-1][2]==False):
+                    # print("in L")
+                    target = idx-1
+                    target_start = li_memory[target][0]
+                    target_size = li_memory[target][1]
+                    li_memory[target][1]+=li_memory[idx][1]
+                    li_memory.pop(idx)
+                    idx=target
+
+                # If only right neighbor is empty
+                elif (li_memory[idx+1][2]==False):
+                    # print("in R")
+                    target = idx+1
+                    target_start = li_memory[target][0]
+                    target_size = li_memory[target][1]
+                    li_memory[idx][1]+=li_memory[target][1]
+                    li_memory.pop(idx+1)
+                
+                if (idx_start <= target_start):
+                    print(f'(merging {idx_start}/{idx_size} and {target_start}/{target_size})')
+                else:
+                    print(f'(merging {target_start}/{target_size} and {idx_start}/{idx_size})')
+
+            print(f'Blocks {free_start_idx}-{free_end_idx} freed:')
 
     # Quit
     elif(cmd[0] == 'q'):
