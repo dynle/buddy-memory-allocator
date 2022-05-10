@@ -17,10 +17,8 @@ See p. 17-108 of syspro-kiso-e.pdf for further description, though you can write
 from operator import itemgetter
 # set total memory space
 memory = 64
-# li_memory=[(4,True),(4,False),(8,False),(16,True),(32,False)]
-# li_memory = [memory 시작 idx, memory크기, 사용여부]
 
-# initialize memory
+# initialize memory, li_memory = [[starting index, size, used], ...]
 li_memory = [[0, memory, False]]
 
 def print_memory():
@@ -71,7 +69,7 @@ while(1):
             allocation_end_idx = li_memory[idx][0]+li_memory[idx][1]-1
             print(f'Blocks {allocation_start_idx}-{allocation_end_idx} allcoated:')
     
-    # Free
+    # Free (Deallocation)
     elif(cmd[0] == 'f'):
         first_block_num = blocks
         if(first_block_num > memory and first_block_num < 0):
@@ -88,49 +86,45 @@ while(1):
 
             # Merge memory space if two neighboring blocks are both empty
             while(len(li_memory)!=1 and ((idx==len(li_memory)-1 and li_memory[idx-1][2]==False) or (idx==0 and li_memory[idx+1][2]==False) or (li_memory[idx-1][2]==False and li_memory[idx+1][2]==False))):
-                idx_start = idx
+                idx_start = li_memory[idx][0]
                 idx_size = li_memory[idx][1]
-                target_start = 0
-                target_size = 0
 
                 # If left and right neighbor are both empty
                 if ((idx!=0 and idx!=len(li_memory)-1) and li_memory[idx-1][2]==False and li_memory[idx+1][2]==False):
                     # print("in both")
                     target = idx-1 if li_memory[idx-1][1]<=li_memory[idx+1][1] else idx+1
-                    target_start = li_memory[target][0]
-                    target_size = li_memory[target][1]
-                    if (target<idx):
-                        li_memory[target][1]+=li_memory[idx][1]
-                        li_memory.pop(idx)
-                        idx=target
-                    else:
-                        li_memory[idx][1]+=li_memory[target][1]
-                        li_memory.pop(target)
 
                 # If only left neighbor is empty
                 elif (idx!=0 and li_memory[idx-1][2]==False):
                     # print("in L")
                     target = idx-1
-                    target_start = li_memory[target][0]
-                    target_size = li_memory[target][1]
-                    li_memory[target][1]+=li_memory[idx][1]
-                    li_memory.pop(idx)
-                    idx=target
 
                 # If only right neighbor is empty
-                elif (li_memory[idx+1][2]==False):
+                else:
                     # print("in R")
                     target = idx+1
-                    target_start = li_memory[target][0]
-                    target_size = li_memory[target][1]
-                    li_memory[idx][1]+=li_memory[target][1]
-                    li_memory.pop(idx+1)
                 
+                target_start = li_memory[target][0]
+                target_size = li_memory[target][1]
+
+                # Merge the memory space between the target and the current idx
+                li_memory[idx][1]+=li_memory[target][1]
+
+                # Change the starting index of the current index if the target is the left neighbor
+                if(target<idx):
+                    li_memory[idx][0]=li_memory[target][0]
+                    idx=target
+
+                # Delete the target from memory space
+                li_memory.pop(target)
+
+                # Print the merged memory space
                 if (idx_start <= target_start):
                     print(f'(merging {idx_start}/{idx_size} and {target_start}/{target_size})')
                 else:
                     print(f'(merging {target_start}/{target_size} and {idx_start}/{idx_size})')
 
+            # Print the freed memory space
             print(f'Blocks {free_start_idx}-{free_end_idx} freed:')
 
     # Quit
