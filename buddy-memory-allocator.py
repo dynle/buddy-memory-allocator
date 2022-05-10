@@ -1,27 +1,10 @@
-"""
-Write an interactive demonstration of a buddy memory allocator.
-Your demo should allow 64 blocks to be allocated and deallocated, and it should correctly merge freed blocks.
-The output should be something like that in Fig. 5.2.
-Each time your program splits a block, it should add a ’|’ to show where the split happened.
-’-’ represents free blocks, and ’#’ represents in-use blocks.
-The two numbers printed out as in 0/4 represent the beginning address and number of blocks in a chunk.
-Your program should take three one-letter commands: ’a’ for allocate, ’f’ for free, and ’q’ for quit.
-The second argument on a line should be the number of blocks (for allocate) or the address, or first block number, of the allocated chunk (for free).
-If two neighboring blocks are both allocated, but were part of separate allocations, be careful to only free the one in the actual request!
-For large numbers of blocks, there are many possible data structures you could use to track the set of blocks that are in use and the size of chunks.
-
-See p. 17-108 of syspro-kiso-e.pdf for further description, though you can write this in any language of your choice.
-
-"""
-
-from operator import itemgetter
-# set total memory space
+# Set total memory space
 memory = 64
 
-# initialize memory, li_memory = [[starting index, size, used], ...]
+# Initialize memory, li_memory = [[starting index, size, used], ...]
 li_memory = [[0, memory, False]]
 
-def print_memory():
+def print_blocks():
     print('|', end='')
     for i in li_memory:
         if i[2] == True:
@@ -32,11 +15,11 @@ def print_memory():
     print()
 
 while(1):
-    print_memory()
-
+    print_blocks()
     print("How many blocks do you want to allocate/free?")
     cmd = input().split()
     blocks = int(cmd[-1]) if len(cmd) != 1 else None
+
 
     # Allcoate
     if(cmd[0] == 'a'):
@@ -45,11 +28,14 @@ while(1):
         elif (blocks > max([x[1] for x in li_memory if x[2] == False])):
             print("You can't allocate more than the biggest free blocks")
         else:
-            # Get the index of the minimum memory space
-            idx = [(y[1],y[2]) for y in li_memory].index((min([mmy[1] for mmy in li_memory if mmy[1]>=blocks and mmy[2] == False]),False))
+            #  Find the minimum free space
+            min_memory_space = min([mmy[1] for mmy in li_memory if mmy[1]>=blocks and mmy[2] == False])
+
+            # Get the index of the minimum memory space which is not allocated
+            idx = [(y[1],y[2]) for y in li_memory].index((min_memory_space,False))
             
             # Split the memory space
-            while(min([mmy[1] for mmy in li_memory if mmy[1]>=blocks and mmy[2] == False]) > blocks):
+            while(min_memory_space > blocks):
                 # min(li_memory, key=itemgetter(1))[1] 이런거 사용해서 clean code
                 print(f'(splitting {li_memory[idx][0]}/{li_memory[idx][1]})')
                 
@@ -62,14 +48,20 @@ while(1):
                 else:
                     li_memory[idx:idx+1] = [[li_memory[idx][0],blocks,False],[li_memory[idx][0]+blocks,li_memory[idx][1]-blocks,False]]
                     # li_memory=li_memory[:idx]+[[li_memory[idx][0],blocks,False],[li_memory[idx][0]+blocks,li_memory[idx][1]-blocks,False]]+li_memory[idx+1:]
+                
+                # Update the minimum memory space
+                min_memory_space = min([mmy[1] for mmy in li_memory if mmy[1]>=blocks and mmy[2] == False])
+            
             # Allocate the number of blocks to the memory space
             li_memory[idx][2] = True
+            
             # (idx start - idx end) form
             allocation_start_idx = li_memory[idx][0]
             allocation_end_idx = li_memory[idx][0]+li_memory[idx][1]-1
             print(f'Blocks {allocation_start_idx}-{allocation_end_idx} allcoated:')
-    
-    # Free (Deallocation)
+
+
+    # Free (Deallocate)
     elif(cmd[0] == 'f'):
         first_block_num = blocks
         if(first_block_num > memory and first_block_num < 0):
@@ -78,58 +70,61 @@ while(1):
             print("Number is not first block number or is not a free block that is not allocated")
         else:
             # Free the number of blocks starting from the first_block_num
-            idx = [x[0] for x in li_memory].index(first_block_num)
-            li_memory[idx][2]=False
+            curr_idx = [x[0] for x in li_memory].index(first_block_num)
+            li_memory[curr_idx][2]=False
 
-            free_start_idx = li_memory[idx][0]
-            free_end_idx = li_memory[idx][0]+li_memory[idx][1]-1
+            free_start_idx = li_memory[curr_idx][0]
+            free_end_idx = li_memory[curr_idx][0]+li_memory[curr_idx][1]-1
 
-            # Merge memory space if two neighboring blocks are both empty
-            while(len(li_memory)!=1 and ((idx==len(li_memory)-1 and li_memory[idx-1][2]==False) or (idx==0 and li_memory[idx+1][2]==False) or (li_memory[idx-1][2]==False and li_memory[idx+1][2]==False))):
-                idx_start = li_memory[idx][0]
-                idx_size = li_memory[idx][1]
+            # Merge memory space if a neighboring block is empty
+            while(len(li_memory)!=1):
+                curr_idx_start = li_memory[curr_idx][0]
+                curr_idx_size = li_memory[curr_idx][1]
 
                 # If left and right neighbor are both empty
-                if ((idx!=0 and idx!=len(li_memory)-1) and li_memory[idx-1][2]==False and li_memory[idx+1][2]==False):
+                if ((curr_idx!=0 and curr_idx!=len(li_memory)-1) and li_memory[curr_idx-1][2]==False and li_memory[curr_idx+1][2]==False):
                     # print("in both")
-                    target = idx-1 if li_memory[idx-1][1]<=li_memory[idx+1][1] else idx+1
-
+                    target = curr_idx-1 if li_memory[curr_idx-1][1]<=li_memory[curr_idx+1][1] else curr_idx+1
                 # If only left neighbor is empty
-                elif (idx!=0 and li_memory[idx-1][2]==False):
+                elif (curr_idx!=0 and li_memory[curr_idx-1][2]==False):
                     # print("in L")
-                    target = idx-1
-
+                    target = curr_idx-1
                 # If only right neighbor is empty
-                else:
+                elif (curr_idx!=len(li_memory)-1 and li_memory[curr_idx+1][2]==False):
                     # print("in R")
-                    target = idx+1
+                    target = curr_idx+1
+                # Stop merging cuz no neighbor is empty
+                else:
+                    break
                 
                 target_start = li_memory[target][0]
                 target_size = li_memory[target][1]
 
                 # Merge the memory space between the target and the current idx
-                li_memory[idx][1]+=li_memory[target][1]
+                li_memory[curr_idx][1]+=li_memory[target][1]
 
                 # Change the starting index of the current index if the target is the left neighbor
-                if(target<idx):
-                    li_memory[idx][0]=li_memory[target][0]
-                    idx=target
+                if(target<curr_idx):
+                    li_memory[curr_idx][0]=li_memory[target][0]
+                    curr_idx=target
 
                 # Delete the target from memory space
                 li_memory.pop(target)
 
                 # Print the merged memory space
-                if (idx_start <= target_start):
-                    print(f'(merging {idx_start}/{idx_size} and {target_start}/{target_size})')
+                if (curr_idx_start <= target_start):
+                    print(f'(merging {curr_idx_start}/{curr_idx_size} and {target_start}/{target_size})')
                 else:
-                    print(f'(merging {target_start}/{target_size} and {idx_start}/{idx_size})')
+                    print(f'(merging {target_start}/{target_size} and {curr_idx_start}/{curr_idx_size})')
 
             # Print the freed memory space
             print(f'Blocks {free_start_idx}-{free_end_idx} freed:')
 
+
     # Quit
     elif(cmd[0] == 'q'):
         break
+
 
     # Invalid command
     else:
