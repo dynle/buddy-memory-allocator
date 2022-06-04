@@ -16,10 +16,10 @@ python buddy-memory-allocator.py
 ## Usage
 
 ```bash
-# 'a' for allocation
+# 'a' for allocation / numebr of blocks
 a 4
 
-# 'f' foor free
+# 'f' foor free / the beginning address
 f 0
 
 # 'q' for quit
